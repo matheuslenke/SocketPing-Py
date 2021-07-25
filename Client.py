@@ -166,5 +166,5 @@ if totalSocketsTransmitted == 0:
 else:
     packetLoss = int(((totalSocketsToTransmit - totalSocketsReturned) / totalSocketsTransmitted) * 100)
 print(f'{totalSocketsTransmitted} packets transmitted, {totalSocketsReturned} received, {packetLoss}% packet loss, time: {socketsTotalTime}ms')
-print(f'rtt min/avg/max/mdev = {rttMin}/{averageRtt}/{rttMax}/{round(mdev,3)}')
+print(f'rtt min/avg/max/mdev = {rttMin}/{round(averageRtt,3)}/{rttMax}/{round(mdev,3)}')
 
