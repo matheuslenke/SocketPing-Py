@@ -1,5 +1,6 @@
 from socket import *
-
+import random
+from time import sleep
 # What's your IP address and witch port should we use?
 recieve_host = '127.0.0.1'
 recieve_port = 30000
@@ -17,5 +18,6 @@ while True:
   decodedList[5] = "1"
   finalMessage = "".join(decodedList)
   print ('Recieve: ' + message.decode('utf-8'))
+  sleep(random.random() * 2)
   serverSocket.sendto(finalMessage.encode('utf-8'), address)
  
