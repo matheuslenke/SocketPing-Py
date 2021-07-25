@@ -47,13 +47,22 @@ def receiveMessage(x):
     sequence = int(sequenceCode)
     return (decodedMessage, timestamp, stringSent, sequence)
 
-# # Getting arguments
-# if len(sys.argv) == 3:
-#     serverName = sys.argv[1]
-#     serverPort = int(sys.argv[2])
-# else:
-#     print("Wrong usage. Correct form: python3 Client.py <serverIp> <port>")
-#     exit(1)
+def calculateSocketData(startTimestamp, receivedTimestamp, sequence):
+    # Calculando timestamp final
+    end = datetime.datetime.utcnow()
+    end2 = TimestampMillisec64(end)
+    endTimestamp = str(end2)[-4:]
+
+    # Calculo do Timestamp e armazenamento
+    if int(endTimestamp) >= int(receivedTimestamp):
+        totalTime = (int(endTimestamp) - int(receivedTimestamp))
+    else:
+        totalTime = (10000 - int(receivedTimestamp)+ int(endTimestamp))
+    sockets[sequence]['totalMs'] = totalTime
+    sockets[sequence]['endTime'] = endTimestamp
+
+    # Imprimindo relatório final para Socket recebido
+    print(f'Received socket {sequence} rtt: {totalTime}ms start: {startTimestamp} end: {endTimestamp}')
 
 serverName = '127.0.0.1'
 serverPort = 30000
@@ -63,53 +72,52 @@ clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM  )
 clientSocket.settimeout(1)
 socketsStartTransmitting = datetime.datetime.now()
 
+isGoingToSendMessage = True
+socketsCounter = 0
 # Main logic: Sending 10 pings
-for x in range(totalSocketsToTransmit):
+while socketsCounter < totalSocketsToTransmit:
     try:
-        # Construindo a mensagem
-        start = datetime.datetime.utcnow()
-        # Pegando milissegundos
-        start2 = TimestampMillisec64(start)
-        id = f'{x:05d}'
-        # Pegando 4 dígitos do Timestamp
-        startTimestamp = str(start2)[-4:]
-        message = bytes(f'{x:05d}0{startTimestamp}Matheus Lenke Coutinho________', 'utf-8')
-        # Armazena dados do Socket em um Dictionary
-        sockets.append({
-            "id": id,
-            "startTime": startTimestamp,
-            "message": message,
-            "returned": False,
-            "endTime": None,
-            'totalMs': 0,
-        })
-        
-        # Envia a mensagem
-        sendMessage(message)
-        totalSocketsTransmitted += 1
+        if isGoingToSendMessage == True:
+            # Construindo a mensagem
+            start = datetime.datetime.utcnow()
+            # Pegando milissegundos
+            start2 = TimestampMillisec64(start)
+            id = f'{socketsCounter:05d}'
+            # Pegando 4 dígitos do Timestamp
+            startTimestamp = str(start2)[-4:]
+            message = bytes(f'{socketsCounter:05d}0{startTimestamp}Matheus Lenke Coutinho________', 'utf-8')
+            # Armazena dados do Socket em um Dictionary
+            sockets.append({
+                "id": id,
+                "startTime": startTimestamp,
+                "message": message,
+                "returned": False,
+                "endTime": None,
+                'totalMs': 0,
+            })
+            
+            # Envia a mensagem
+            sendMessage(message)
+            totalSocketsTransmitted += 1
+        else:
+            isGoingToSendMessage = True
         # Aguarda a mensagem e realiza validações
-        (receivedMessage, receivedTimestamp, receivedString, sequence) = receiveMessage(x)
+        # Aguarda enquanto tiver mensagens pra receber, pro caso de
+        # receber uma anterior que deu timeout  
+        print(f'Waiting for socket {socketsCounter}...')
+        (receivedMessage, receivedTimestamp, receivedString, sequence) = receiveMessage(socketsCounter)
         if receivedMessage == None:
             continue
-
-        # Calculando timestamp final
-        end = datetime.datetime.utcnow()
-        end2 = TimestampMillisec64(end)
-        endTimestamp = str(end2)[-4:]
-        
-        # Calculo do Timestamp e armazenamento
-        if endTimestamp >= receivedTimestamp:
-            totalTime = (int(endTimestamp) - int(receivedTimestamp))
+        calculateSocketData(startTimestamp, receivedTimestamp, sequence)
+        if sequence < socketsCounter:
+            isGoingToSendMessage = False
         else:
-            totalTime = (int(endTimestamp) - 10000 + int(receivedTimestamp))
-        sockets[sequence]['totalMs'] = totalTime
-        sockets[sequence]['endTime'] = endTimestamp
-
-        # Imprimindo relatório final para Socket recebido
-        print(f'Socket {sequence} rtt: {totalTime}ms start: {startTimestamp} end: {endTimestamp}')
+            socketsCounter += 1
+        
     except socket.timeout as e:
         # Imprime se socket deu timeout
-        print(f'Socket {sequence} error: {e}')
+        print(f'Socket {socketsCounter} error: {e}')
+        socketsCounter += 1
         continue
 
 clientSocket.close()
@@ -143,8 +151,20 @@ for item in sockets:
         mdevSum += pow(difference, 2)
 mdev = sqrt(mdevSum / totalSocketsTransmitted) 
 
+# Imprimindo quais sockets recebeu
+stringSocketsReceived = 'Sockets Received: { '
+for item in sockets:
+    if item['returned'] == True:
+        itemId = item['id']
+        stringSocketsReceived += f'{itemId} '
+stringSocketsReceived += ' }'
+print(stringSocketsReceived)
+
 # Imprimindo relatório final
-packetLoss = int(((totalSocketsToTransmit - totalSocketsReturned) / totalSocketsTransmitted) * 100)
+if totalSocketsTransmitted == 0:
+    packetLoss = 100
+else:
+    packetLoss = int(((totalSocketsToTransmit - totalSocketsReturned) / totalSocketsTransmitted) * 100)
 print(f'{totalSocketsTransmitted} packets transmitted, {totalSocketsReturned} received, {packetLoss}% packet loss, time: {socketsTotalTime}ms')
 print(f'rtt min/avg/max/mdev = {rttMin}/{averageRtt}/{rttMax}/{round(mdev,3)}')
 
