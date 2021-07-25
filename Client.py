@@ -30,17 +30,17 @@ def receiveMessage(x):
 
     # Mensagem com tamanho errado
     if len(decodedMessage) > 40:
-        print(f'Socket {sequenceCode} does not conform to protocol')
+        # print(f'Socket {sequenceCode} does not conform to protocol')
         return None
     # Mensagem não retornou Pong
     if typeIdentifier != "1":
-        print(f'Socket {sequenceCode} does not conform to protocol')
+        # print(f'Socket {sequenceCode} does not conform to protocol')
         return None
 
     # Verifica se o socket recebido existe
     socket = sockets[int(sequenceCode)]
     if socket == None:
-        print(f'Socket {sequenceCode} does not conform to protocol')
+        # print(f'Socket {sequenceCode} does not conform to protocol')
         return None
     # Atualiza socket recebido e retorna
     socket['returned'] = True
@@ -128,7 +128,7 @@ socketsTotalTime = int((socketsEndTransmitting - socketsStartTransmitting).total
 
 #  ------ Cálculos Finais ------
 totalSocketsReturned = 0
-rttMin = 100000
+rttMin = float('inf')
 rttMax = 0
 totalRtt = 0
 
@@ -141,7 +141,11 @@ for item in sockets:
             rttMin = item['totalMs']
         if item['totalMs'] > rttMax:
             rttMax = item['totalMs']
-averageRtt = totalRtt / totalSocketsReturned
+if totalSocketsReturned == 0:
+    rttMin = 0
+    averageRtt = 0
+else:
+    averageRtt = totalRtt / totalSocketsReturned
 
 # Calculando desvio padrão
 mdevSum = 0
